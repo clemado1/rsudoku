@@ -10,13 +10,13 @@ pub struct SudokuGame {
 
 #[wasm_bindgen]
 impl SudokuGame {
-    pub fn new() -> Self {
+    pub fn new(difficulty: u8) -> Self {
         let mut game = SudokuGame {
             board: [[0; 9]; 9],
             solution: [[0; 9]; 9],
         };
         game.generate_solution();
-        game.create_puzzle();
+        game.create_puzzle(difficulty);
         game
     }
 
@@ -44,10 +44,17 @@ impl SudokuGame {
         }
     }
 
-    fn create_puzzle(&mut self) {
+    fn create_puzzle(&mut self, difficulty: u8) {
         self.board = self.solution;
         let mut rng = rand::thread_rng();
-        let cells_to_remove = 40 + rng.gen_range(0..=20); // Remove 40-60 cells
+        let cells_to_remove = match difficulty {
+            1 => 20 + rng.gen_range(0..=10),
+            2 => 30 + rng.gen_range(0..=10),
+            3 => 40 + rng.gen_range(0..=10),
+            4 => 50 + rng.gen_range(0..=10),
+            5 => 60 + rng.gen_range(0..=10),
+            _ => 40 + rng.gen_range(0..=20),
+        };
 
         for _ in 0..cells_to_remove {
             let row = rng.gen_range(0..9);
