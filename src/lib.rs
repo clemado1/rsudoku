@@ -1,25 +1,103 @@
-use rand::prelude::SliceRandom;
+use rand::seq::SliceRandom;
 use rand::Rng;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
+#[derive(Clone, Copy, PartialEq)]
+pub enum CellState {
+    Empty,
+    Prefilled,
+    PlayerFilled,
+}
+
+#[wasm_bindgen]
+#[derive(Clone, Copy)]
+pub struct Cell {
+    state: CellState,
+    value: u8,
+}
+
+#[wasm_bindgen]
+impl Cell {
+    pub fn new(state: CellState, value: u8) -> Self {
+        Cell { state, value }
+    }
+
+    pub fn get_state(&self) -> CellState {
+        self.state
+    }
+
+    pub fn get_value(&self) -> u8 {
+        self.value
+    }
+}
+
+#[wasm_bindgen]
 pub struct SudokuGame {
-    board: [[u8; 9]; 9],
-    solution: [[u8; 9]; 9],
+    board: Vec<Vec<Cell>>,
+    solution: Vec<Vec<u8>>,
 }
 
 #[wasm_bindgen]
 impl SudokuGame {
     pub fn new(difficulty: u8) -> Self {
         let mut game = SudokuGame {
-            board: [[0; 9]; 9],
-            solution: [[0; 9]; 9],
+            board: vec![vec![Cell::new(CellState::Empty, 0); 9]; 9],
+            solution: vec![vec![0; 9]; 9],
         };
         game.generate_solution();
         game.create_puzzle(difficulty);
         game
     }
 
+    pub fn get_cell(&self, row: usize, col: usize) -> u8 {
+        self.board[row][col].get_value()
+    }
+
+    pub fn set_cell(&mut self, row: usize, col: usize, value: u8) -> bool {
+        match self.board[row][col].state {
+            CellState::Empty | CellState::PlayerFilled => {
+                if value == 0 {
+                    self.board[row][col] = Cell::new(CellState::Empty, 0);
+                    true
+                } else if value <= 9 {
+                    self.board[row][col] = Cell::new(CellState::PlayerFilled, value);
+                    true
+                } else {
+                    false
+                }
+            }
+            CellState::Prefilled => false,
+        }
+    }
+
+    pub fn is_solved(&self) -> bool {
+        self.board.iter().enumerate().all(|(i, row)| {
+            row.iter()
+                .enumerate()
+                .all(|(j, cell)| cell.value == self.solution[i][j])
+        })
+    }
+
+    pub fn is_cell_prefilled(&self, row: usize, col: usize) -> bool {
+        self.board[row][col].state == CellState::Prefilled
+    }
+
+    pub fn check_cell(&self, row: usize, col: usize) -> bool {
+        self.board[row][col].value == self.solution[row][col]
+    }
+
+    pub fn get_hint(&self, row: usize, col: usize) -> Option<u8> {
+        if self.board[row][col].state == CellState::Empty {
+            Some(self.solution[row][col])
+        } else {
+            None
+        }
+    }
+}
+
+// Private methods
+impl SudokuGame {
     fn generate_solution(&mut self) {
         let mut rng = rand::thread_rng();
 
@@ -36,7 +114,7 @@ impl SudokuGame {
                 }
 
                 if self.solution[i][j] == 0 {
-                    self.solution = [[0; 9]; 9];
+                    self.solution = vec![vec![0; 9]; 9];
                     self.generate_solution();
                     return;
                 }
@@ -45,7 +123,16 @@ impl SudokuGame {
     }
 
     fn create_puzzle(&mut self, difficulty: u8) {
-        self.board = self.solution;
+        self.board = self
+            .solution
+            .iter()
+            .map(|row| {
+                row.iter()
+                    .map(|&val| Cell::new(CellState::Prefilled, val))
+                    .collect()
+            })
+            .collect();
+
         let mut rng = rand::thread_rng();
         let cells_to_remove = match difficulty {
             1 => 20 + rng.gen_range(0..=10),
@@ -59,7 +146,7 @@ impl SudokuGame {
         for _ in 0..cells_to_remove {
             let row = rng.gen_range(0..9);
             let col = rng.gen_range(0..9);
-            self.board[row][col] = 0;
+            self.board[row][col] = Cell::new(CellState::Empty, 0);
         }
     }
 
@@ -86,22 +173,5 @@ impl SudokuGame {
         }
 
         true
-    }
-
-    pub fn get_cell(&self, row: usize, col: usize) -> u8 {
-        self.board[row][col]
-    }
-
-    pub fn set_cell(&mut self, row: usize, col: usize, value: u8) -> bool {
-        if self.board[row][col] == 0 && value >= 1 && value <= 9 {
-            self.board[row][col] = value;
-            true
-        } else {
-            false
-        }
-    }
-
-    pub fn is_solved(&self) -> bool {
-        self.board == self.solution
     }
 }
