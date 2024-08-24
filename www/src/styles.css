@@ -16,7 +16,7 @@
 }
 
 .number-pad {
-    @apply absolute grid grid-cols-3 auto-cols-max gap-1 p-1.5 bg-gray-200 text-gray-600;
+    @apply absolute grid grid-cols-3 auto-cols-max gap-1 p-1.5 bg-gray-200 text-gray-600 border border-sky-500;
 }
 
 .number-pad.inactive {

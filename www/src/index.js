@@ -6,6 +6,14 @@ const MARGIN = 10;
 const AREA = SIZE - 2 * MARGIN;
 const CELL = AREA / 9;
 
+const CellState = {
+    Empty: 0,
+    Prefilled: 1,
+    PlayerFilled: 2
+};
+
+Object.freeze(CellState);
+
 class SudokuApp {
     constructor() {
         this.game = null;
@@ -162,24 +170,31 @@ class SudokuApp {
 
         for (let row = 0; row < 9; row++) {
             for (let col = 0; col < 9; col++) {
-                const val = this.game.get_cell(row, col);
-                if (val !== 0) this.drawNum(row, col, val);
+                const cell = this.game.get_cell(row, col);
+                if (!cell.is_empty()) {
+                    this.drawNum(row, col, cell);
+                }
             }
         }
     }
 
-    drawNum(row, col, val) {
-        const pad = 2;
-        this.ctx.fillStyle = '#f9fafb';
-        this.ctx.fillRect(
-            col * CELL + pad,
-            row * CELL + pad,
-            CELL - 2 * pad,
-            CELL - 2 * pad
-        );
+    drawNum(row, col, cell) {
+        const x = MARGIN + col * CELL;
+        const y = MARGIN + row * CELL;
 
-        this.ctx.fillStyle = '#000';
-        this.ctx.fillText(val.toString(), col * CELL + CELL / 2, row * CELL + CELL / 2);
+        const isPrefilled = cell.get_state() === CellState.Prefilled;
+        const isPlayerFilled = cell.get_state() === CellState.PlayerFilled;
+
+        // 셀 배경 그리기
+        this.ctx.fillStyle = isPrefilled ? '#f3f4f6' : '#fff';
+        this.ctx.fillRect(x, y, CELL, CELL);
+
+        // 숫자 그리기
+        this.ctx.fillStyle = isPlayerFilled ? '#1e3a8a' : '#000';
+        const value = cell.get_value();
+        if (value !== undefined) {
+            this.ctx.fillText(value.toString(), x + CELL / 2, y + CELL / 2);
+        }
     }
 
     drawGrid() {
@@ -192,7 +207,7 @@ class SudokuApp {
         this.ctx.lineWidth = 2;
 
         for (let i = 0; i <= 9; i++) {
-            const pos = MARGIN + i * (AREA / 9);
+            const pos = MARGIN + i * CELL;
             this.line(pos, MARGIN, pos, SIZE - MARGIN);
             this.line(MARGIN, pos, SIZE - MARGIN, pos);
         }
@@ -202,7 +217,7 @@ class SudokuApp {
         this.ctx.lineWidth = 8;
 
         for (let i = 0; i <= 3; i++) {
-            const pos = MARGIN + i * (AREA / 3);
+            const pos = MARGIN + i * (CELL * 3);
             this.line(pos, MARGIN, pos, SIZE - MARGIN);
             this.line(MARGIN, pos, SIZE - MARGIN, pos);
         }

@@ -14,12 +14,12 @@ pub enum CellState {
 #[derive(Clone, Copy)]
 pub struct Cell {
     state: CellState,
-    value: u8,
+    value: Option<u8>,
 }
 
 #[wasm_bindgen]
 impl Cell {
-    pub fn new(state: CellState, value: u8) -> Self {
+    pub fn new(state: CellState, value: Option<u8>) -> Self {
         Cell { state, value }
     }
 
@@ -27,8 +27,12 @@ impl Cell {
         self.state
     }
 
-    pub fn get_value(&self) -> u8 {
+    pub fn get_value(&self) -> Option<u8> {
         self.value
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.value.is_none()
     }
 }
 
@@ -42,7 +46,7 @@ pub struct SudokuGame {
 impl SudokuGame {
     pub fn new(difficulty: u8) -> Self {
         let mut game = SudokuGame {
-            board: vec![vec![Cell::new(CellState::Empty, 0); 9]; 9],
+            board: vec![vec![Cell::new(CellState::Empty, None); 9]; 9],
             solution: vec![vec![0; 9]; 9],
         };
         game.generate_solution();
@@ -50,23 +54,23 @@ impl SudokuGame {
         game
     }
 
-    pub fn get_cell(&self, row: usize, col: usize) -> u8 {
-        self.board[row][col].get_value()
+    pub fn get_cell(&self, row: usize, col: usize) -> Cell {
+        self.board[row][col]
     }
 
-    pub fn set_cell(&mut self, row: usize, col: usize, value: u8) -> bool {
+    pub fn set_cell(&mut self, row: usize, col: usize, value: Option<u8>) -> bool {
         match self.board[row][col].state {
-            CellState::Empty | CellState::PlayerFilled => {
-                if value == 0 {
-                    self.board[row][col] = Cell::new(CellState::Empty, 0);
+            CellState::Empty | CellState::PlayerFilled => match value {
+                None => {
+                    self.board[row][col] = Cell::new(CellState::Empty, None);
                     true
-                } else if value <= 9 {
-                    self.board[row][col] = Cell::new(CellState::PlayerFilled, value);
-                    true
-                } else {
-                    false
                 }
-            }
+                Some(v) if v <= 9 => {
+                    self.board[row][col] = Cell::new(CellState::PlayerFilled, Some(v));
+                    true
+                }
+                _ => false,
+            },
             CellState::Prefilled => false,
         }
     }
@@ -75,7 +79,7 @@ impl SudokuGame {
         self.board.iter().enumerate().all(|(i, row)| {
             row.iter()
                 .enumerate()
-                .all(|(j, cell)| cell.value == self.solution[i][j])
+                .all(|(j, cell)| cell.value.map_or(false, |v| v == self.solution[i][j]))
         })
     }
 
@@ -84,7 +88,9 @@ impl SudokuGame {
     }
 
     pub fn check_cell(&self, row: usize, col: usize) -> bool {
-        self.board[row][col].value == self.solution[row][col]
+        self.board[row][col]
+            .value
+            .map_or(false, |v| v == self.solution[row][col])
     }
 
     pub fn get_hint(&self, row: usize, col: usize) -> Option<u8> {
@@ -128,7 +134,7 @@ impl SudokuGame {
             .iter()
             .map(|row| {
                 row.iter()
-                    .map(|&val| Cell::new(CellState::Prefilled, val))
+                    .map(|&val| Cell::new(CellState::Prefilled, Some(val)))
                     .collect()
             })
             .collect();
@@ -146,7 +152,7 @@ impl SudokuGame {
         for _ in 0..cells_to_remove {
             let row = rng.gen_range(0..9);
             let col = rng.gen_range(0..9);
-            self.board[row][col] = Cell::new(CellState::Empty, 0);
+            self.board[row][col] = Cell::new(CellState::Empty, None);
         }
     }
 
