@@ -9,7 +9,8 @@ const CELL = AREA / 9;
 const CellState = {
     Empty: 0,
     Prefilled: 1,
-    PlayerFilled: 2
+    PlayerFilled: 2,
+    Invalid: 3
 };
 
 Object.freeze(CellState);
@@ -20,11 +21,13 @@ class SudokuApp {
         this.level = null;
         this.canvas = null;
         this.ctx = null;
+        this.selectedCell = null;
     }
 
     async init() {
         await init();
         this.bindEvents();
+        this.startInitialGame();
     }
 
     bindEvents() {
@@ -32,8 +35,26 @@ class SudokuApp {
             btn.addEventListener('click', this.pickLevel.bind(this));
         });
 
-        document.getElementById('check-solution').addEventListener('click', this.check.bind(this));
         document.getElementById('new-game').addEventListener('click', this.newGame.bind(this));
+        document.addEventListener('keydown', this.handleKeyPress.bind(this));
+
+        // 숫자 패드 이벤트 리스너 추가
+        document.querySelectorAll('.number-btn').forEach(btn => {
+            btn.addEventListener('click', this.handleNumberPadClick.bind(this));
+        });
+    }
+
+    startInitialGame() {
+        const activeButton = document.querySelector('.difficulty-btn.active');
+        if (activeButton) {
+            this.level = parseInt(activeButton.dataset.level);
+            this.start();
+        } else {
+            // 활성화된 버튼이 없으면 기본값
+            this.level = 2;
+            this.start();
+            this.updateButtons(document.querySelector('.difficulty-btn[data-level="2"]'));
+        }
     }
 
     pickLevel(e) {
@@ -44,10 +65,8 @@ class SudokuApp {
 
     updateButtons(btn) {
         document.querySelectorAll('.difficulty-btn').forEach(b => {
-            b.classList.add('inactive');
             b.classList.remove('active');
         });
-        btn.classList.remove('inactive');
         btn.classList.add('active');
     }
 
@@ -65,15 +84,16 @@ class SudokuApp {
     }
 
     listenBoard() {
-        this.canvas.addEventListener('click', this.onInput.bind(this));
-        this.canvas.addEventListener('touchstart', this.onInput.bind(this));
+        this.canvas.addEventListener('click', this.onCellSelect.bind(this));
+        this.canvas.addEventListener('touchstart', this.onCellSelect.bind(this));
     }
 
-    onInput(e) {
+    onCellSelect(e) {
         e.preventDefault();
         const { row, col } = this.getCell(e);
         if (row >= 0 && row < 9 && col >= 0 && col < 9) {
-            this.showPad(row, col, e);
+            this.selectedCell = { row, col };
+            this.draw();
         }
     }
 
@@ -97,58 +117,41 @@ class SudokuApp {
         return { row, col };
     }
 
-    showPad(row, col, e) {
-        const pad = document.getElementById('number-pad');
-        const rect = this.canvas.getBoundingClientRect();
-        const { left, top } = this.padPos(row, col, rect);
-
-        pad.style.top = `${top}px`;
-        pad.style.left = `${left}px`;
-        pad.classList.remove('inactive');
-
-        this.setupPad(row, col, pad);
+    handleKeyPress(e) {
+        if (this.selectedCell) {
+            const { row, col } = this.selectedCell;
+            if (e.key >= '1' && e.key <= '9') {
+                const value = parseInt(e.key);
+                this.setSelectedCellValue(value);
+            } else if (e.key === 'Backspace' || e.key === 'Delete') {
+                this.setSelectedCellValue(null);
+            }
+        }
     }
 
-    padPos(row, col, rect) {
-        const scaleX = this.canvas.width / rect.width;
-        const scaleY = this.canvas.height / rect.height;
-        const padW = 140;
-        const padH = 140;
+    handleNumberPadClick(e) {
+        if (this.selectedCell) {
+            const value = e.target.dataset.value;
 
-        let left = (MARGIN + col * CELL) / scaleX;
-        let top = (MARGIN + (row + 1) * CELL) / scaleY;
-
-        if (left + padW > rect.width) left = rect.width - padW;
-        if (top + padH > rect.height) top = (MARGIN + row * CELL) / scaleY - padH;
-
-        return { left, top };
+            if (value === 'clear') {
+                this.setSelectedCellValue(null);
+            } else {
+                this.setSelectedCellValue(parseInt(value));
+            }
+        }
     }
 
-    setupPad(row, col, pad) {
-        const btns = pad.querySelectorAll('button');
-        btns.forEach(btn => {
-            btn.onclick = (e) => {
-                e.stopPropagation();
-                this.setCell(row, col, btn);
-                this.hidePad(pad);
-            };
-        });
-
-        setTimeout(() => {
-            document.addEventListener('click', this.hidePad.bind(this, pad));
-        }, 0);
-    }
-
-    hidePad(pad, e) {
-        if (e && (pad.contains(e.target) || e.target.closest('#sudoku-canvas'))) return;
-        pad.classList.add('inactive');
-        document.removeEventListener('click', this.hidePad);
-    }
-
-    setCell(row, col, btn) {
-        const val = parseInt(btn.getAttribute('data-value'));
-        this.game.set_cell(row, col, val);
-        this.draw();
+    setSelectedCellValue(value) {
+        const { row, col } = this.selectedCell;
+        if (this.game.set_cell(row, col, value)) {
+            this.draw();
+            if (this.game.is_solved()) {
+                setTimeout(() => {
+                    alert('축하합니다! 스도쿠를 완성했습니다! 🎉');
+                    this.newGame();
+                }, 100);
+            }
+        }
     }
 
     draw() {
@@ -171,9 +174,7 @@ class SudokuApp {
         for (let row = 0; row < 9; row++) {
             for (let col = 0; col < 9; col++) {
                 const cell = this.game.get_cell(row, col);
-                if (!cell.is_empty()) {
-                    this.drawNum(row, col, cell);
-                }
+                this.drawNum(row, col, cell);
             }
         }
     }
@@ -184,13 +185,28 @@ class SudokuApp {
 
         const isPrefilled = cell.get_state() === CellState.Prefilled;
         const isPlayerFilled = cell.get_state() === CellState.PlayerFilled;
+        const isInvalid = cell.get_state() === CellState.Invalid;
+        const isSelected = this.selectedCell && this.selectedCell.row === row && this.selectedCell.col === col;
 
         // 셀 배경 그리기
-        this.ctx.fillStyle = isPrefilled ? '#f3f4f6' : '#fff';
+        if (isPrefilled) {
+            this.ctx.fillStyle = '#f3f4f6';
+        } else if (isSelected) {
+            this.ctx.fillStyle = '#eff6ff';
+        } else {
+            this.ctx.fillStyle = '#fff';
+        }
         this.ctx.fillRect(x, y, CELL, CELL);
 
         // 숫자 그리기
-        this.ctx.fillStyle = isPlayerFilled ? '#1e3a8a' : '#000';
+        if (isInvalid) {
+            this.ctx.fillStyle = '#ef4444';
+        } else if (isPlayerFilled) {
+            this.ctx.fillStyle = '#3b82f6';
+        } else {
+            this.ctx.fillStyle = '#000';
+        }
+
         const value = cell.get_value();
         if (value !== undefined) {
             this.ctx.fillText(value.toString(), x + CELL / 2, y + CELL / 2);
@@ -232,16 +248,9 @@ class SudokuApp {
         this.ctx.stroke();
     }
 
-    check() {
-        if (this.game.is_solved()) {
-            alert('정답입니다! 🎉');
-        } else {
-            alert('틀렸어요😿 다시 시도해보세요!');
-        }
-    }
-
     newGame() {
-        setTimeout(() => this.start(), 300);
+        this.selectedCell = null;
+        this.start();
     }
 }
 
