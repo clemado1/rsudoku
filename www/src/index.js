@@ -25,7 +25,7 @@ class SudokuApp {
     }
 
     async init() {
-        await init();
+        await init({});
         this.bindEvents();
         this.startInitialGame();
     }
