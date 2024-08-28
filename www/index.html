@@ -33,11 +33,11 @@
             </div>
         </div>
 
-        <div class="relative flex justify-center items-start p-2 gap-2">
-            <div id="canvas-container" class="relative w-full sm:max-w-[80vmin] md:max-w-[60vmin] aspect-square">
+        <div class="relative px-5 py-2">
+            <div id="canvas-container" class="relative w-full sm:max-w-[60vmin] aspect-square">
                 <canvas id="sudoku-canvas" width="2000" height="2000" class="max-w-full max-h-full"></canvas>
             </div>
-            <div class="absolute sidebar flex flex-col gap-1 top-2 -right-10">
+            <div class="absolute flex flex-col gap-1 -bottom-20 right-5 sm:top-2 sm:-right-8">
                 <button id="clear" class="sidebar-btn">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
                         class="w-5 h-5 fill-current pointer-events-none">
@@ -56,8 +56,8 @@
                 </button>
             </div>
         </div>
-        <div class="flex justify-center gap-1 my-1">
-            <div id="number-pad" class="flex items-center gap-1 p-1">
+        <div class="flex justify-center mr-10 sm:mr-0">
+            <div id="number-pad" class="grid grid-cols-5 sm:grid-cols-10 items-center gap-1 p-1">
                 <button class="number-btn" data-value="1">1</button>
                 <button class="number-btn" data-value="2">2</button>
                 <button class="number-btn" data-value="3">3</button>
