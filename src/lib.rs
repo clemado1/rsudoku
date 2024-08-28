@@ -12,6 +12,12 @@ pub enum CellState {
 }
 
 #[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(js_namespace = console)]
+    fn log(s: &str);
+}
+
+#[wasm_bindgen]
 #[derive(Clone, Copy)]
 pub struct Cell {
     state: CellState,
@@ -45,10 +51,10 @@ pub struct SudokuGame {
 #[wasm_bindgen]
 impl SudokuGame {
     pub fn new(difficulty: u8) -> Self {
-        let mut game = SudokuGame {
-            board: vec![vec![Cell::new(CellState::Empty, None); 9]; 9],
-        };
-        game.create_puzzle(difficulty);
+        let board = create_initial_board();
+        let mut game = SudokuGame { board: board };
+
+        game.create(difficulty);
         game
     }
 
@@ -64,7 +70,7 @@ impl SudokuGame {
                     true
                 }
                 Some(v) if v <= 9 => {
-                    if self.is_valid_move(row, col, v) {
+                    if is_valid(&self.board, row, col, v) {
                         self.board[row][col] = Cell::new(CellState::PlayerFilled, Some(v));
                     } else {
                         self.board[row][col] = Cell::new(CellState::Invalid, Some(v));
@@ -78,107 +84,174 @@ impl SudokuGame {
     }
 
     pub fn is_solved(&self) -> bool {
-        for row in 0..9 {
-            for col in 0..9 {
-                if self.board[row][col].is_empty()
-                    || self.board[row][col].state == CellState::Invalid
-                {
-                    return false;
-                }
-            }
-        }
-        true
+        !self
+            .board
+            .iter()
+            .flatten()
+            .any(|cell| cell.is_empty() || cell.state == CellState::Invalid)
     }
 
     pub fn is_cell_prefilled(&self, row: usize, col: usize) -> bool {
         self.board[row][col].state == CellState::Prefilled
     }
 
-    fn is_valid_move(&self, row: usize, col: usize, num: u8) -> bool {
-        // Check row
-        if self.board[row].iter().any(|cell| cell.value == Some(num)) {
-            return false;
-        }
-
-        // Check column
-        if (0..9).any(|i| self.board[i][col].value == Some(num)) {
-            return false;
-        }
-
-        // Check 3x3 box
-        let box_row = row - row % 3;
-        let box_col = col - col % 3;
-        for i in 0..3 {
-            for j in 0..3 {
-                if self.board[box_row + i][box_col + j].value == Some(num) {
-                    return false;
-                }
-            }
-        }
-
-        true
-    }
-
-    fn create_puzzle(&mut self, difficulty: u8) {
+    fn create(&mut self, difficulty: u8) {
         let mut rng = rand::thread_rng();
-        let mut numbers: Vec<u8> = (1..=9).collect();
-        numbers.shuffle(&mut rng);
 
-        // Fill diagonal boxes
-        for i in (0..9).step_by(3) {
-            self.fill_box(i, i, &numbers);
-        }
-
-        // Fill the rest
-        self.solve();
-
-        // Remove numbers based on difficulty
-        let cells_to_remove = match difficulty {
-            1 => rng.gen_range(31..=41), // Very Easy
-            2 => rng.gen_range(41..=51), // Easy
-            3 => rng.gen_range(47..=52), // Medium
-            4 => rng.gen_range(53..=56), // Hard
-            5 => rng.gen_range(57..=59), // Very Hard
-            _ => rng.gen_range(41..=51), // Default to Easy
+        // 난이도에 따라 Prefilled 칸 수 결정
+        let hint_count_by_difficulty = match difficulty {
+            1 => rng.gen_range(51..=60), // Very Easy
+            2 => rng.gen_range(41..=50), // Easy
+            3 => rng.gen_range(31..=40), // Medium
+            4 => rng.gen_range(24..=30), // Hard
+            5 => rng.gen_range(17..=23), // Very Hard
+            _ => rng.gen_range(30..=40), // Default to Easy
         };
 
-        let mut positions: Vec<(usize, usize)> =
-            (0..9).flat_map(|i| (0..9).map(move |j| (i, j))).collect();
-        positions.shuffle(&mut rng);
+        let mut board_positions: Vec<(usize, usize)> = positions();
+        board_positions.shuffle(&mut rng);
 
-        for (row, col) in positions.iter().take(cells_to_remove) {
-            self.board[*row][*col] = Cell::new(CellState::Empty, None);
-        }
-    }
+        // 칸을 제거하면서 유일해를 가지는지 검증
+        for &(row, col) in &board_positions {
+            if self.count_filled_cells() <= hint_count_by_difficulty {
+                break;
+            }
 
-    fn fill_box(&mut self, row: usize, col: usize, numbers: &[u8]) {
-        let mut nums = numbers.to_vec();
-        nums.shuffle(&mut rand::thread_rng());
-        for i in 0..3 {
-            for j in 0..3 {
-                self.board[row + i][col + j] =
-                    Cell::new(CellState::Prefilled, Some(nums[i * 3 + j]));
+            let temp = self.board[row][col].clone();
+            self.board[row][col] = Cell::new(CellState::Empty, None);
+
+            if !self.has_unique_solution() {
+                self.board[row][col] = temp;
             }
         }
     }
 
-    fn solve(&mut self) -> bool {
-        for row in 0..9 {
-            for col in 0..9 {
-                if self.board[row][col].is_empty() {
-                    for num in 1..=9 {
-                        if self.is_valid_move(row, col, num) {
-                            self.board[row][col] = Cell::new(CellState::Prefilled, Some(num));
-                            if self.solve() {
-                                return true;
-                            }
-                            self.board[row][col] = Cell::new(CellState::Empty, None);
-                        }
-                    }
-                    return false;
+    fn count_filled_cells(&self) -> usize {
+        self.board
+            .iter()
+            .flatten()
+            .filter(|cell| !cell.is_empty())
+            .count()
+    }
+
+    fn has_unique_solution(&self) -> bool {
+        let mut count_solutions = 0;
+        let mut board_copy = self.board.clone();
+        solve_recursively(&mut board_copy, &mut count_solutions);
+
+        count_solutions == 1
+    }
+}
+
+fn positions() -> Vec<(usize, usize)> {
+    (0..9).flat_map(|r| (0..9).map(move |c| (r, c))).collect()
+}
+
+fn create_initial_board() -> Vec<Vec<Cell>> {
+    let mut board = vec![vec![Cell::new(CellState::Empty, None); 9]; 9];
+
+    // 대각선 방향 3x3 박스 생성
+    for i in (0..9).step_by(3) {
+        fill_box(&mut board, i, i);
+    }
+
+    // 나머지 생성
+    fill_recursively(&mut board);
+
+    board
+}
+
+fn is_valid(board: &Vec<Vec<Cell>>, row: usize, col: usize, num: u8) -> bool {
+    // Check row
+    if board[row].iter().any(|cell| cell.value == Some(num)) {
+        return false;
+    }
+
+    // Check column
+    if (0..9).any(|i| board[i][col].value == Some(num)) {
+        return false;
+    }
+
+    // Check 3x3 box
+    let box_row = row - row % 3;
+    let box_col = col - col % 3;
+    for i in 0..3 {
+        for j in 0..3 {
+            if board[box_row + i][box_col + j].value == Some(num) {
+                return false;
+            }
+        }
+    }
+
+    true
+}
+
+fn fill_box(board: &mut Vec<Vec<Cell>>, row: usize, col: usize) {
+    let mut rng = rand::thread_rng();
+    let mut numbers: Vec<u8> = (1..=9).collect();
+    numbers.shuffle(&mut rng);
+
+    for i in 0..3 {
+        for j in 0..3 {
+            board[row + i][col + j] = Cell::new(CellState::Prefilled, Some(numbers[i * 3 + j]));
+        }
+    }
+}
+
+fn fill_recursively(board: &mut Vec<Vec<Cell>>) -> bool {
+    for (row, col) in positions() {
+        if !board[row][col].is_empty() {
+            continue;
+        }
+        // 1부터 9까지 숫자 시도
+        for num in 1..=9 {
+            if !is_valid(board, row, col, num) {
+                continue;
+            }
+
+            board[row][col] = Cell::new(CellState::Prefilled, Some(num));
+
+            // 재귀로 다음 Cell 호출
+            if fill_recursively(board) {
+                return true;
+            }
+            // 실패 시
+            board[row][col] = Cell::new(CellState::Empty, None);
+        }
+
+        return false;
+    }
+
+    true
+}
+
+fn solve_recursively(board: &mut Vec<Vec<Cell>>, count_solutions: &mut i32) -> bool {
+    for (row, col) in positions() {
+        if !board[row][col].is_empty() {
+            continue;
+        }
+        // 1부터 9까지 숫자 시도
+        for num in 1..=9 {
+            if !is_valid(board, row, col, num) {
+                continue;
+            }
+
+            board[row][col] = Cell::new(CellState::Prefilled, Some(num));
+
+            // 재귀로 다음 Cell 호출
+            if solve_recursively(board, count_solutions) {
+                *count_solutions += 1;
+
+                if *count_solutions >= 2 {
+                    return true;
                 }
             }
+            // 다음 풀이를 위해 빈칸으로 설정
+            board[row][col] = Cell::new(CellState::Empty, None);
         }
-        true
+
+        return false;
     }
+
+    true
 }
