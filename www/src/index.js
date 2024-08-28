@@ -66,7 +66,9 @@ class SudokuApp {
     updateButtons(btn) {
         document.querySelectorAll('.difficulty-btn').forEach(b => {
             b.classList.remove('active');
+            b.classList.add('inactive');
         });
+        btn.classList.remove('inactive');
         btn.classList.add('active');
     }
 
