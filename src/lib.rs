@@ -91,6 +91,17 @@ impl SudokuGame {
             .any(|cell| cell.is_empty() || cell.state == CellState::Invalid)
     }
 
+    pub fn clear(&mut self) {
+        self.board
+            .iter_mut()
+            .flatten()
+            .filter(|cell| matches!(cell.state, CellState::PlayerFilled | CellState::Invalid))
+            .for_each(|cell| {
+                cell.state = CellState::Empty;
+                cell.value = None;
+            });
+    }
+
     pub fn is_cell_prefilled(&self, row: usize, col: usize) -> bool {
         self.board[row][col].state == CellState::Prefilled
     }

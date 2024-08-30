@@ -36,6 +36,7 @@ class SudokuApp {
         });
 
         document.getElementById('new-game').addEventListener('click', this.newGame.bind(this));
+        document.getElementById('clear-game').addEventListener('click', this.clearGame.bind(this));
         document.addEventListener('keydown', this.handleKeyPress.bind(this));
 
         // 숫자 패드 이벤트 리스너 추가
@@ -253,6 +254,12 @@ class SudokuApp {
     newGame() {
         this.selectedCell = null;
         this.start();
+    }
+
+    clearGame() {
+        this.game.clear();
+        this.draw();
+
     }
 }
 
