@@ -109,3 +109,74 @@ fn find_empty_cell(board: &[[Cell; 9]; 9]) -> Option<(usize, usize)> {
     }
     None
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // 유일해를 가지는 테스트용 스도쿠
+    const TEST_SUDOKU: [[u8; 9]; 9] = [
+        [5, 3, 0, 0, 7, 0, 0, 0, 0],
+        [6, 0, 0, 1, 9, 5, 0, 0, 0],
+        [0, 9, 8, 0, 0, 0, 0, 6, 0],
+        [8, 0, 0, 0, 6, 0, 0, 0, 3],
+        [4, 0, 0, 8, 0, 3, 0, 0, 1],
+        [7, 0, 0, 0, 2, 0, 0, 0, 6],
+        [0, 6, 0, 0, 0, 0, 2, 8, 0],
+        [0, 0, 0, 4, 1, 9, 0, 0, 5],
+        [0, 0, 0, 0, 8, 0, 0, 7, 9],
+    ];
+
+    fn create_cell_board(numbers: [[u8; 9]; 9]) -> [[Cell; 9]; 9] {
+        let mut board = [[Cell::new(CellState::Empty, None); 9]; 9];
+        for (i, row) in numbers.iter().enumerate() {
+            for (j, &num) in row.iter().enumerate() {
+                if num > 0 {
+                    board[i][j] = Cell::new(CellState::Prefilled, Some(num));
+                }
+            }
+        }
+        board
+    }
+
+    #[test]
+    fn test_generate_sudoku() {}
+
+    #[test]
+    fn test_is_valid() {
+        let board = create_cell_board(TEST_SUDOKU);
+
+        // 유효한 값 입력
+        assert!(is_valid(&board, 0, 2, 4));
+        assert!(is_valid(&board, 1, 1, 2));
+
+        // 유효하지 않은 값 입력
+        // 같은 행 중복 확인
+        assert!(!is_valid(&board, 0, 0, 5));
+        // 같은 열 중복 확인
+        assert!(!is_valid(&board, 0, 1, 3));
+        // 같은 박스 중복 확인
+        assert!(!is_valid(&board, 0, 3, 5));
+    }
+
+    #[test]
+    fn test_solve() {}
+
+    #[test]
+    fn test_find_empty_cell() {
+        let board = create_cell_board(TEST_SUDOKU);
+        assert_eq!(find_empty_cell(&board), Some((0, 2)));
+
+        // 임의의 값 모두 입력
+        let mut filled_board = create_cell_board(TEST_SUDOKU);
+        for row in 0..9 {
+            for col in 0..9 {
+                if filled_board[row][col].is_empty() {
+                    filled_board[row][col] = Cell::new(CellState::PlayerFilled, Some(1));
+                }
+            }
+        }
+        // 빈 칸이 없을 때
+        assert_eq!(find_empty_cell(&filled_board), None);
+    }
+}
