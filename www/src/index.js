@@ -2,7 +2,7 @@ import './styles.css';
 import init, { SudokuGame, CellState, Difficulty } from 'rsudoku';
 
 const SIZE = 2000;
-const MARGIN = 10;
+const MARGIN = 20;
 const AREA = SIZE - 2 * MARGIN;
 const CELL_SIZE = AREA / 9;
 
