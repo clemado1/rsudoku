@@ -114,8 +114,8 @@ fn find_empty_cell(board: &[[Cell; 9]; 9]) -> Option<(usize, usize)> {
 mod tests {
     use super::*;
 
-    // 유일해를 가지는 테스트용 스도쿠
-    const TEST_SUDOKU: [[u8; 9]; 9] = [
+    // 유일해를 가지는 스도쿠
+    const UNIQUE_SUDOKU: [[u8; 9]; 9] = [
         [5, 3, 0, 0, 7, 0, 0, 0, 0],
         [6, 0, 0, 1, 9, 5, 0, 0, 0],
         [0, 9, 8, 0, 0, 0, 0, 6, 0],
@@ -124,6 +124,32 @@ mod tests {
         [7, 0, 0, 0, 2, 0, 0, 0, 6],
         [0, 6, 0, 0, 0, 0, 2, 8, 0],
         [0, 0, 0, 4, 1, 9, 0, 0, 5],
+        [0, 0, 0, 0, 8, 0, 0, 7, 9],
+    ];
+
+    // 여러 해를 가지는 스도쿠
+    const MULTI_SOLUTION_SUDOKU: [[u8; 9]; 9] = [
+        [5, 3, 0, 0, 7, 0, 0, 0, 0],
+        [6, 0, 0, 1, 9, 5, 0, 0, 0],
+        [0, 9, 8, 0, 0, 0, 0, 6, 0],
+        [8, 0, 0, 0, 6, 0, 0, 0, 3],
+        [4, 0, 0, 8, 0, 3, 0, 0, 1],
+        [7, 0, 0, 0, 2, 0, 0, 0, 6],
+        [0, 6, 0, 0, 0, 0, 2, 8, 0],
+        [0, 0, 0, 4, 1, 9, 0, 0, 5],
+        [0, 0, 0, 0, 8, 0, 0, 0, 0],
+    ];
+
+    // 해가 없는 스도쿠
+    const NO_SOLUTION_SUDOKU: [[u8; 9]; 9] = [
+        [5, 3, 0, 0, 7, 0, 0, 0, 0],
+        [6, 0, 0, 1, 9, 5, 0, 0, 0],
+        [0, 9, 8, 0, 0, 0, 0, 6, 0],
+        [8, 0, 0, 0, 6, 0, 0, 0, 3],
+        [4, 0, 0, 8, 0, 3, 0, 0, 1],
+        [7, 0, 0, 0, 2, 0, 0, 0, 6],
+        [0, 6, 0, 0, 0, 0, 2, 8, 0],
+        [0, 0, 0, 4, 1, 9, 5, 0, 0],
         [0, 0, 0, 0, 8, 0, 0, 7, 9],
     ];
 
@@ -140,11 +166,14 @@ mod tests {
     }
 
     #[test]
-    fn test_generate_sudoku() {}
+    fn test_generate_sudoku() {
+        let board = generate_sudoku();
+        assert_eq!(find_empty_cell(&board), None);
+    }
 
     #[test]
     fn test_is_valid() {
-        let board = create_cell_board(TEST_SUDOKU);
+        let board = create_cell_board(UNIQUE_SUDOKU);
 
         // 유효한 값 입력
         assert!(is_valid(&board, 0, 2, 4));
@@ -160,15 +189,42 @@ mod tests {
     }
 
     #[test]
-    fn test_solve() {}
+    fn test_solution() {
+        let mut count_solutions = 0;
+        let mut board = create_cell_board(UNIQUE_SUDOKU);
+
+        solve(&mut board, &mut count_solutions);
+
+        assert_eq!(count_solutions, 1);
+    }
+
+    #[test]
+    fn test_multi_solution() {
+        let mut count_solutions = 0;
+        let mut board = create_cell_board(MULTI_SOLUTION_SUDOKU);
+
+        solve(&mut board, &mut count_solutions);
+
+        assert_eq!(count_solutions, 2);
+    }
+
+    #[test]
+    fn test_no_solution() {
+        let mut count_solutions = 0;
+        let mut board = create_cell_board(NO_SOLUTION_SUDOKU);
+
+        solve(&mut board, &mut count_solutions);
+
+        assert_eq!(count_solutions, 0);
+    }
 
     #[test]
     fn test_find_empty_cell() {
-        let board = create_cell_board(TEST_SUDOKU);
+        let board = create_cell_board(UNIQUE_SUDOKU);
         assert_eq!(find_empty_cell(&board), Some((0, 2)));
 
         // 임의의 값 모두 입력
-        let mut filled_board = create_cell_board(TEST_SUDOKU);
+        let mut filled_board = create_cell_board(UNIQUE_SUDOKU);
         for row in 0..9 {
             for col in 0..9 {
                 if filled_board[row][col].is_empty() {
