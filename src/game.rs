@@ -1,5 +1,5 @@
 use crate::cell::{Cell, CellState};
-use crate::core::{generate_sudoku, is_valid, solve};
+use crate::core::{count_solutions, generate_sudoku, is_valid};
 use rand::seq::SliceRandom;
 use rand::Rng;
 use wasm_bindgen::prelude::*;
@@ -132,11 +132,10 @@ impl SudokuGame {
             .count()
     }
 
-    fn has_unique_solution(&self) -> bool {
-        let mut count_solutions = 0;
-        let mut board_copy = self.board.clone();
-        solve(&mut board_copy, &mut count_solutions);
+    fn has_unique_solution(&mut self) -> bool {
+        let mut board_copy = self.board;
+        let count = count_solutions(&mut board_copy);
 
-        count_solutions == 1
+        count == 1
     }
 }

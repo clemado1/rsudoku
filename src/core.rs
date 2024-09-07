@@ -41,7 +41,7 @@ fn fill_recursively(board: &mut [[Cell; 9]; 9]) -> bool {
                 return true;
             }
             // 실패 시
-            board[row][col] = Cell::new(CellState::Empty, None);
+            board[row][col].clear();
         }
         false
     } else {
@@ -74,29 +74,51 @@ pub fn is_valid(board: &[[Cell; 9]; 9], row: usize, col: usize, num: u8) -> bool
     true
 }
 
-pub fn solve(board: &mut [[Cell; 9]; 9], count_solutions: &mut i32) -> bool {
-    if let Some((row, col)) = find_empty_cell(board) {
-        for num in 1..=9 {
-            if !is_valid(board, row, col, num) {
-                continue;
-            }
+/// Count sudoku solutions but directly return 2 if there are solutions more than 1
+///
+/// # Results
+/// - Unique solution : 1
+/// - Multiple solution : 2
+/// - Invalid sudoku : 0
+///
+///
+/// # Parameter
+/// * `board` - 9x9 Cells
+pub fn count_solutions(board: &mut [[Cell; 9]; 9]) -> u8 {
+    let mut count: u8 = 0;
 
-            board[row][col] = Cell::new(CellState::PlayerFilled, Some(num));
-            // 재귀로 다음 Cell 호출
-            if solve(board, count_solutions) {
-                *count_solutions += 1;
-                if *count_solutions >= 2 {
-                    board[row][col] = Cell::new(CellState::Empty, None);
+    fn backtrack(board: &mut [[Cell; 9]; 9], count: &mut u8) -> bool {
+        // 해가 2개 이상이면 바로 결과를 반환
+        if *count >= 2 {
+            return true;
+        }
+
+        if let Some((row, col)) = find_empty_cell(board) {
+            for num in 1..=9 {
+                if !is_valid(board, row, col, num) {
+                    continue;
+                }
+
+                board[row][col] = Cell::new(CellState::PlayerFilled, Some(num));
+                if backtrack(board, count) {
                     return true;
                 }
+                // 다음 풀이를 위해 빈칸으로 설정
+                board[row][col].clear();
             }
-            // 다음 풀이를 위해 빈칸으로 설정
-            board[row][col] = Cell::new(CellState::Empty, None);
+        } else {
+            *count += 1;
+            // 해가 2개 이상이면 바로 결과를 반환
+            if *count >= 2 {
+                return true;
+            }
         }
+
         false
-    } else {
-        true
     }
+
+    backtrack(board, &mut count);
+    count
 }
 
 fn find_empty_cell(board: &[[Cell; 9]; 9]) -> Option<(usize, usize)> {
@@ -190,32 +212,26 @@ mod tests {
 
     #[test]
     fn test_solution() {
-        let mut count_solutions = 0;
-        let mut board = create_cell_board(UNIQUE_SUDOKU);
+        let mut board: [[Cell; 9]; 9] = create_cell_board(UNIQUE_SUDOKU);
+        let count = count_solutions(&mut board);
 
-        solve(&mut board, &mut count_solutions);
-
-        assert_eq!(count_solutions, 1);
+        assert_eq!(count, 1);
     }
 
     #[test]
     fn test_multi_solution() {
-        let mut count_solutions = 0;
         let mut board = create_cell_board(MULTI_SOLUTION_SUDOKU);
+        let count = count_solutions(&mut board);
 
-        solve(&mut board, &mut count_solutions);
-
-        assert_eq!(count_solutions, 2);
+        assert_eq!(count, 2);
     }
 
     #[test]
     fn test_no_solution() {
-        let mut count_solutions = 0;
         let mut board = create_cell_board(NO_SOLUTION_SUDOKU);
+        let count = count_solutions(&mut board);
 
-        solve(&mut board, &mut count_solutions);
-
-        assert_eq!(count_solutions, 0);
+        assert_eq!(count, 0);
     }
 
     #[test]
