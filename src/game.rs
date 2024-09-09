@@ -139,3 +139,89 @@ impl SudokuGame {
         count == 1
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_new_game_with_difficulty() {
+        let difficulties = [
+            Difficulty::VeryEasy,
+            Difficulty::Easy,
+            Difficulty::Medium,
+            Difficulty::Hard,
+            Difficulty::VeryHard,
+        ];
+
+        for &difficulty in &difficulties {
+            let game = SudokuGame::new(difficulty);
+        let filled_count = game.count_filled_cells();
+
+            match difficulty {
+                Difficulty::VeryEasy => assert!(filled_count >= 53 && filled_count <= 60),
+                Difficulty::Easy => assert!(filled_count >= 44 && filled_count <= 52),
+                Difficulty::Medium => assert!(filled_count >= 35 && filled_count <= 43),
+                Difficulty::Hard => assert!(filled_count >= 26 && filled_count <= 34),
+                Difficulty::VeryHard => assert!(filled_count >= 17 && filled_count <= 25),
+            }
+        }
+    }
+
+    #[test]
+    fn test_set_cell() {
+        let mut game = SudokuGame::new(Difficulty::Easy);
+
+        // Find an empty cell
+        let (empty_row, empty_col) = (0..9)
+            .flat_map(|row| (0..9).map(move |col| (row, col)))
+            .find(|&(row, col)| game.get_cell(row, col).is_empty())
+            .unwrap();
+
+        // Set a valid value
+        assert!(
+            game.set_cell(empty_row, empty_col, Some(1)),
+            "Should be able to set a valid value"
+        );
+        assert_eq!(
+            game.get_cell(empty_row, empty_col).get_value(),
+            Some(1),
+            "Cell should contain the set value"
+        );
+
+        // Set an unacceptable value
+        assert!(
+            !game.set_cell(empty_row, empty_col, Some(10)),
+            "Should return false for value grater than 9"
+        );
+        assert_eq!(
+            game.get_cell(empty_row, empty_col).get_value(),
+            Some(1),
+            "Cell should not be changed"
+        );
+    }
+
+    #[test]
+    fn test_clear() {
+        let mut game = SudokuGame::new(Difficulty::Easy);
+
+        // Fill some cells
+        for row in 0..9 {
+            for col in 0..9 {
+                if game.get_cell(row, col).is_empty() {
+                    game.set_cell(row, col, Some(1));
+                    break;
+                }
+            }
+        }
+
+        game.clear();
+
+        let playerfilled_count = (0..9)
+            .flat_map(|row| (0..9).map(move |col| (row, col)))
+            .filter(|&(row, col)| game.get_cell(row, col).get_state() == CellState::PlayerFilled)
+            .count();
+
+        assert_eq!(playerfilled_count, 0, "Player-filled Cell should not exist");
+    }
+}
