@@ -28,11 +28,11 @@ impl Difficulty {
 
     fn get_hint_count(&self, rng: &mut impl Rng) -> usize {
         match self {
-            Difficulty::VeryEasy => rng.gen_range(51..=60),
-            Difficulty::Easy => rng.gen_range(41..=50),
-            Difficulty::Medium => rng.gen_range(31..=40),
-            Difficulty::Hard => rng.gen_range(24..=30),
-            Difficulty::VeryHard => rng.gen_range(17..=23),
+            Difficulty::VeryEasy => rng.gen_range(53..=60),
+            Difficulty::Easy => rng.gen_range(44..=52),
+            Difficulty::Medium => rng.gen_range(35..=43),
+            Difficulty::Hard => rng.gen_range(26..=34),
+            Difficulty::VeryHard => rng.gen_range(17..=25),
         }
     }
 }
@@ -72,6 +72,16 @@ impl SudokuGame {
                 }
                 _ => false,
             },
+            CellState::Prefilled => false,
+        }
+    }
+
+    pub fn clear_cell(&mut self, row: usize, col: usize) -> bool {
+        match self.board[row][col].get_state() {
+            CellState::Empty | CellState::PlayerFilled | CellState::Invalid => {
+                self.board[row][col].clear();
+                true
+            }
             CellState::Prefilled => false,
         }
     }
@@ -156,7 +166,7 @@ mod tests {
 
         for &difficulty in &difficulties {
             let game = SudokuGame::new(difficulty);
-        let filled_count = game.count_filled_cells();
+            let filled_count = game.count_filled_cells();
 
             match difficulty {
                 Difficulty::VeryEasy => assert!(filled_count >= 53 && filled_count <= 60),

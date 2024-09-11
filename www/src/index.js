@@ -126,11 +126,17 @@ class SudokuApp {
             const value = e.target.dataset.value;
 
             if (value === 'clear') {
-                this.setSelectedCellValue(null);
+                this.clearSelectedCell();
             } else {
                 this.setSelectedCellValue(parseInt(value));
             }
         }
+    }
+
+    clearSelectedCell() {
+        const { row, col } = this.selectedCell;
+        this.game.clear_cell(row, col);
+        this.draw();
     }
 
     setSelectedCellValue(value) {
