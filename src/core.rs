@@ -49,31 +49,6 @@ fn fill_recursively(board: &mut [[Cell; 9]; 9]) -> bool {
     }
 }
 
-pub fn is_valid(board: &[[Cell; 9]; 9], row: usize, col: usize, num: u8) -> bool {
-    // Check row
-    if board[row].iter().any(|cell| cell.get_value() == Some(num)) {
-        return false;
-    }
-
-    // Check column
-    if (0..9).any(|i| board[i][col].get_value() == Some(num)) {
-        return false;
-    }
-
-    // Check 3x3 box
-    let box_row = row - row % 3;
-    let box_col = col - col % 3;
-    for i in 0..3 {
-        for j in 0..3 {
-            if board[box_row + i][box_col + j].get_value() == Some(num) {
-                return false;
-            }
-        }
-    }
-
-    true
-}
-
 /// Count sudoku solutions but directly return 2 if there are solutions more than 1
 ///
 /// # Results
@@ -119,6 +94,31 @@ pub fn count_solutions(board: &mut [[Cell; 9]; 9]) -> u8 {
 
     backtrack(board, &mut count);
     count
+}
+
+fn is_valid(board: &[[Cell; 9]; 9], row: usize, col: usize, num: u8) -> bool {
+    // Check row
+    if board[row].iter().any(|cell| cell.get_value() == Some(num)) {
+        return false;
+    }
+
+    // Check column
+    if (0..9).any(|i| board[i][col].get_value() == Some(num)) {
+        return false;
+    }
+
+    // Check 3x3 box
+    let box_row = row - row % 3;
+    let box_col = col - col % 3;
+    for i in 0..3 {
+        for j in 0..3 {
+            if board[box_row + i][box_col + j].get_value() == Some(num) {
+                return false;
+            }
+        }
+    }
+
+    true
 }
 
 fn find_empty_cell(board: &[[Cell; 9]; 9]) -> Option<(usize, usize)> {

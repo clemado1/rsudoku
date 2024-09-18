@@ -1,5 +1,5 @@
 use crate::cell::{Cell, CellState};
-use crate::core::{count_solutions, generate_sudoku, is_valid};
+use crate::core::{count_solutions, generate_sudoku};
 use rand::seq::SliceRandom;
 use rand::Rng;
 use wasm_bindgen::prelude::*;
@@ -40,13 +40,16 @@ impl Difficulty {
 #[wasm_bindgen]
 pub struct SudokuGame {
     board: [[Cell; 9]; 9],
+    solution: [[u8; 9]; 9],
 }
 
 #[wasm_bindgen]
 impl SudokuGame {
     pub fn new(difficulty: Difficulty) -> Self {
         let board = generate_sudoku();
-        let mut game = SudokuGame { board };
+        let solution = board.map(|row| row.map(|cell| cell.get_value().unwrap_or(0)));
+
+        let mut game = SudokuGame { board, solution };
         game.create(difficulty);
         game
     }
@@ -63,7 +66,7 @@ impl SudokuGame {
                     true
                 }
                 Some(v) if v <= 9 => {
-                    if is_valid(&self.board, row, col, v) {
+                    if self.is_correct(row, col, Some(v)) {
                         self.board[row][col].set(CellState::PlayerFilled, Some(v));
                     } else {
                         self.board[row][col].set(CellState::Invalid, Some(v));
@@ -87,11 +90,12 @@ impl SudokuGame {
     }
 
     pub fn is_solved(&self) -> bool {
-        !self
-            .board
-            .iter()
-            .flatten()
-            .any(|cell| cell.is_empty() || cell.get_state() == CellState::Invalid)
+        self.board.iter().enumerate().all(|(row, cells)| {
+            cells
+                .iter()
+                .enumerate()
+                .all(|(col, cell)| self.is_correct(row, col, cell.get_value()))
+        })
     }
 
     pub fn clear(&mut self) {
@@ -132,6 +136,10 @@ impl SudokuGame {
                 self.board[row][col].set(CellState::Prefilled, temp);
             }
         }
+    }
+
+    fn is_correct(&self, row: usize, col: usize, value: Option<u8>) -> bool {
+        value.is_some_and(|v| self.solution[row][col] == v)
     }
 
     fn count_filled_cells(&self) -> usize {
@@ -188,15 +196,38 @@ mod tests {
             .find(|&(row, col)| game.get_cell(row, col).is_empty())
             .unwrap();
 
-        // Set a valid value
+        let answer = game.solution[empty_row][empty_col];
+
+        // Set a valid but not collect value
         assert!(
-            game.set_cell(empty_row, empty_col, Some(1)),
+            game.set_cell(empty_row, empty_col, Some(answer + 1)),
             "Should be able to set a valid value"
         );
         assert_eq!(
             game.get_cell(empty_row, empty_col).get_value(),
-            Some(1),
+            Some(answer + 1),
             "Cell should contain the set value"
+        );
+        assert_eq!(
+            game.get_cell(empty_row, empty_col).get_state(),
+            CellState::Invalid,
+            "Cell should be Invalid state"
+        );
+
+        // Set a valid and collect value
+        assert!(
+            game.set_cell(empty_row, empty_col, Some(answer)),
+            "Should be able to set a valid value"
+        );
+        assert_eq!(
+            game.get_cell(empty_row, empty_col).get_value(),
+            Some(answer),
+            "Cell should contain the set value"
+        );
+        assert_eq!(
+            game.get_cell(empty_row, empty_col).get_state(),
+            CellState::PlayerFilled,
+            "Cell should be PlayerFilled state"
         );
 
         // Set an unacceptable value
@@ -206,9 +237,39 @@ mod tests {
         );
         assert_eq!(
             game.get_cell(empty_row, empty_col).get_value(),
-            Some(1),
+            Some(answer),
             "Cell should not be changed"
         );
+    }
+
+    #[test]
+    fn test_is_solved() {
+        let mut game = SudokuGame::new(Difficulty::Easy);
+
+        // Fill all cells with the correct solution
+        for row in 0..9 {
+            for col in 0..9 {
+                game.set_cell(row, col, Some(game.solution[row][col]));
+            }
+        }
+
+        assert!(game.is_solved(), "Game should be solved");
+
+        // Find a player filled cell
+        let (row, col) = (0..9)
+            .flat_map(|row| (0..9).map(move |col| (row, col)))
+            .find(|&(row, col)| game.get_cell(row, col).get_state() == CellState::PlayerFilled)
+            .unwrap();
+
+        // Change one cell to an incorrect value
+        let incorrect_value = if game.solution[row][col] < 9 {
+            game.solution[row][col] + 1
+        } else {
+            game.solution[row][col] - 1
+        };
+        game.set_cell(row, col, Some(incorrect_value));
+
+        assert!(!game.is_solved(), "Game should not be solved");
     }
 
     #[test]
