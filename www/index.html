@@ -16,9 +16,9 @@
         <h1 class="font-bold text-2xl text-center">ㅅㅡㄷㅗㅋㅜ</h1>
     </header>
 
-    <main class="flex flex-col items-center w-full">
-        <div class="p-2">
-            <div class="flex space-x-1 rounded-xl bg-gray-100 p-1">
+    <main class="flex flex-col w-full sm:max-w-[80vmin] md:max-w-[60vmin] justify-center items-center mx-auto">
+        <div class="w-full p-2">
+            <div class="flex gap-1 rounded-xl bg-gray-100 p-1">
                 <button class="difficulty-btn inactive" data-level="1">
                     매우 쉬움
                 </button>
@@ -37,8 +37,12 @@
             </div>
         </div>
 
-        <div class="relative p-2">
-            <div id="canvas-container" class="relative w-full md:max-w-[60vmin] aspect-square">
+        <div class="w-full text-gray-700 text-right -mb-2 px-4">
+            <p id="timer">00:00</p>
+        </div>
+
+        <div class="w-full relative p-2">
+            <div id="canvas-container" class="relative aspect-square">
                 <canvas id="sudoku-canvas" width="2000" height="2000" class="max-w-full max-h-full"></canvas>
             </div>
             <div class="absolute flex flex-col gap-1 -bottom-20 right-5 sm:top-2 sm:-right-10">
@@ -60,7 +64,7 @@
                 </button>
             </div>
         </div>
-        <div class="w-full max-w-[70vmin] md:max-w-[60vmin] mr-10 sm:mr-0 pb-4">
+        <div class="w-full max-w-[70vmin] sm:max-w-full mr-10 sm:mr-0 pb-4">
             <div id="number-pad" class="grid grid-cols-5 sm:grid-cols-10 items-center gap-1 p-1">
                 <button class="number-btn" data-value="1">1</button>
                 <button class="number-btn" data-value="2">2</button>

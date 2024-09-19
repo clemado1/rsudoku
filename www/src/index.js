@@ -13,6 +13,8 @@ class SudokuApp {
         this.canvas = null;
         this.ctx = null;
         this.selectedCell = null;
+        this.startTime = null;
+        this.timerInterval = null;
     }
 
     async init() {
@@ -65,6 +67,7 @@ class SudokuApp {
     start() {
         this.game = SudokuGame.new(this.difficulty);
         this.setup();
+        this.startTimer();
     }
 
     setup() {
@@ -111,7 +114,6 @@ class SudokuApp {
 
     handleKeyPress(e) {
         if (this.selectedCell) {
-            const { row, col } = this.selectedCell;
             if (e.key >= '1' && e.key <= '9') {
                 const value = parseInt(e.key);
                 this.setSelectedCellValue(value);
@@ -144,8 +146,10 @@ class SudokuApp {
         if (this.game.set_cell(row, col, value)) {
             this.draw();
             if (this.game.is_solved()) {
+                this.stopTimer();
+                const elapsedTime = Math.floor((Date.now() - this.startTime) / 1000);
                 setTimeout(() => {
-                    alert('축하합니다! 스도쿠를 완성했습니다! 🎉');
+                    alert(`축하합니다! ${this.formatTime(elapsedTime)}만에 스도쿠를 완성했습니다! 🎉`);
                     this.newGame();
                 }, 100);
             }
@@ -246,12 +250,40 @@ class SudokuApp {
 
     newGame() {
         this.selectedCell = null;
+        this.stopTimer();
         this.start();
     }
 
     clearGame() {
         this.game.clear();
         this.draw();
+    }
+
+    startTimer() {
+        this.startTime = Date.now();
+        this.updateTimer();
+        this.timerInterval = setInterval(() => this.updateTimer(), 1000);
+    }
+
+    stopTimer() {
+        if (this.timerInterval) {
+            clearInterval(this.timerInterval);
+            this.timerInterval = null;
+        }
+    }
+
+    updateTimer() {
+        const elapsedTime = Math.floor((Date.now() - this.startTime) / 1000);
+        const timerElement = document.getElementById('timer');
+        if (timerElement) {
+            timerElement.textContent = this.formatTime(elapsedTime);
+        }
+    }
+
+    formatTime(seconds) {
+        const minutes = Math.floor(seconds / 60);
+        const remainingSeconds = seconds % 60;
+        return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
     }
 }
 
