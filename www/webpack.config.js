@@ -27,7 +27,8 @@ module.exports = {
         }),
         new CopyWebpackPlugin({
             patterns: [
-                { from: 'ads.txt', to: 'ads.txt' }
+                { from: 'ads.txt', to: 'ads.txt' },
+                { from: 'CNAME', to: 'CNAME', toType: 'file', noErrorOnMissing: true }
             ],
         }),
     ],
